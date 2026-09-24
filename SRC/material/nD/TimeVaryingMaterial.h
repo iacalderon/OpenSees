@@ -127,9 +127,12 @@ private:
     Vector epsilon_real_n = Vector(6);  
     Vector epsilon_proj_n = Vector(6);  
 
-    //global variables for all materials... should not be
-    // static double E, G, nu, A;
-    static std::map<int, double> E, G, nu, A;
-    static std::map<int, bool> new_time_step;
+    // Current interpolated properties and refresh state belong to this
+    // material-point copy. Evolution histories remain shared and immutable.
+    double current_E = 0.0;
+    double current_G = 0.0;
+    double current_nu = 0.0;
+    double current_A = 0.0;
+    bool new_time_step = true;
 };
 #endif
