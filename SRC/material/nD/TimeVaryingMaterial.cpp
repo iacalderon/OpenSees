@@ -381,34 +381,46 @@ const Matrix &TimeVaryingMaterial::getInitialTangent(void)
 
 int TimeVaryingMaterial::commitState(void)
 {
-    new_time_step[this->getTag()] = true;
+    // Materialize and snapshot a complete trial state before advancing either material.
+    Vector sigma_proj_trial(theProjectedMaterial->getStress());
+    Vector dsigma_proj = sigma_proj_trial - sigma_proj_n;
+    Vector sigma_real_trial = sigma_real_n + dsigma_proj / A[this->getTag()];
+    Vector epsilon_real_trial(epsilon_real);
+    Vector epsilon_proj_trial(theProjectedMaterial->getStrain());
 
-    const Vector& sigma_proj = theProjectedMaterial->getStress();
-    const Vector& epsilon_proj = theProjectedMaterial->getStrain();
-
-    sigma_real_n = sigma_real;
-    sigma_proj_n = sigma_proj;
-    epsilon_real_n = epsilon_real;
-    epsilon_proj_n = epsilon_proj;
-
-    return theProjectedMaterial->commitState();
+    int result = theProjectedMaterial->commitState();
+    if (result == 0) {
+        sigma_real_n = sigma_real_trial;
+        sigma_proj_n = sigma_proj_trial;
+        epsilon_real_n = epsilon_real_trial;
+        epsilon_proj_n = epsilon_proj_trial;
+        new_time_step[this->getTag()] = true;
+    }
+    return result;
 }
 
 int TimeVaryingMaterial::revertToLastCommit(void)
 {
-    sigma_real = sigma_real_n ;
-    // sigma_proj = sigma_proj_n ;
-    epsilon_real = epsilon_real_n ;
-    return theProjectedMaterial->revertToLastCommit();
+    int result = theProjectedMaterial->revertToLastCommit();
+    if (result == 0) {
+        sigma_real = sigma_real_n;
+        epsilon_real = epsilon_real_n;
+    }
+    return result;
 }
 
 int TimeVaryingMaterial::revertToStart(void)
 {
-    sigma_real_n.Zero();
-    sigma_proj_n.Zero();
-    epsilon_real_n.Zero();
-    epsilon_proj_n.Zero();
-    return theProjectedMaterial->revertToStart();
+    int result = theProjectedMaterial->revertToStart();
+    if (result == 0) {
+        sigma_real.Zero();
+        epsilon_real.Zero();
+        sigma_real_n.Zero();
+        sigma_proj_n.Zero();
+        epsilon_real_n.Zero();
+        epsilon_proj_n.Zero();
+    }
+    return result;
 }
 
 NDMaterial * TimeVaryingMaterial::getCopy(void)
