@@ -134,5 +134,10 @@ private:
     double current_nu = 0.0;
     double current_A = 0.0;
     bool new_time_step = true;
+
+    // Optional material-point evolution variable. Domain time remains the
+    // backward-compatible driver until parameter 4002 is updated.
+    double local_evolution_variable = 0.0;
+    bool use_local_evolution_variable = false;
 };
 #endif

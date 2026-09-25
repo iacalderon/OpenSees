@@ -213,8 +213,10 @@ int TimeVaryingMaterial::setTrialStrain(const Vector & strain)
     depsilon_real = epsilon_real - epsilon_real_n ; // depsilon_real = epsilon_real_new - epsilon_real_old
 
     // Get the current parameters at current time
-    double current_time = OPS_GetDomain()->getCurrentTime();  //should not be used in displacement control user could set the current time as a parameter (check ASDConcrete3D)
-    getParameters(current_time);
+    double current_driver = use_local_evolution_variable
+        ? local_evolution_variable
+        : OPS_GetDomain()->getCurrentTime();
+    getParameters(current_driver);
 
     int tag = this->getTag();
     double Ex  = current_E;  double Ey  = current_E;  double Ez  = current_E;
@@ -436,6 +438,8 @@ NDMaterial * TimeVaryingMaterial::getCopy(void)
     theCopy->current_nu = current_nu;
     theCopy->current_A = current_A;
     theCopy->new_time_step = new_time_step;
+    theCopy->local_evolution_variable = local_evolution_variable;
+    theCopy->use_local_evolution_variable = use_local_evolution_variable;
     return theCopy;
 }
 
@@ -482,6 +486,14 @@ int TimeVaryingMaterial::setParameter(const char** argv, int argc, Parameter& pa
         return param.addObject(4001, this);
     }
 
+    // 4002 - optional material-point evolution variable. Once updated, this
+    // value replaces global domain time as the interpolation driver.
+    if (strcmp(argv[0], "evolutionVariable") == 0 ||
+            strcmp(argv[0], "localDriver") == 0) {
+        param.setValue(local_evolution_variable);
+        return param.addObject(4002, this);
+    }
+
     // forward to the adapted (isotropic) material
     return theProjectedMaterial->setParameter(argv, argc, param);
 }
@@ -498,6 +510,15 @@ int TimeVaryingMaterial::updateParameter(int parameterID, Information& info)
         epsilon_internal(0) = initNormalStrain;
         epsilon_internal(1) = initNormalStrain;
         epsilon_internal(2) = initNormalStrain;
+        return 0;
+    }
+
+
+    case 4002:
+    {
+        local_evolution_variable = info.theDouble;
+        use_local_evolution_variable = true;
+        new_time_step = true;
         return 0;
     }
 
